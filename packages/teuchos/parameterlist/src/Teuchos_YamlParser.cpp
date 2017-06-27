@@ -56,40 +56,10 @@
 #include "Teuchos_XMLParameterListCoreHelpers.hpp"
 #include "Teuchos_YamlParameterListCoreHelpers.hpp"
 #include "Teuchos_TwoDArray.hpp"
+#include "Teuchos_YAML.hpp"
 
 namespace Teuchos
 {
-
-/* see https://github.com/jbeder/yaml-cpp/issues/261
-   there are times when we want to insist that a parameter
-   value be interpreted as a string despite it being parseable
-   as a number.
-   the standard way to do this in YAML is to put the number in quotes,
-   i.e. '1e-3' instead of 1e-3.
-   however, the usual YAML::Node::as<T> system doesn't respect quoting
-   when trying to cast to numbers.
-   so, this is our own version of as<T>, called quoted_as<T>, using
-   the Tag workaround suggested in the issue linked above. */
-
-template <typename T>
-struct QuotedAs {
-  static T eval(YAML::Node const& node) {
-    // this "!" tag apparently denotes that the value was quoted
-    if (node.Tag() == "!") {
-      throw std::runtime_error("quoted_as from quoted string to number");
-    }
-    return node.as<T>();
-  }
-};
-
-template <>
-struct QuotedAs<std::string> {
-  // only a cast to string will succeed if quoted
-  static std::string eval(YAML::Node const& node) { return node.as<std::string>(); }
-};
-
-template <typename T>
-static T quoted_as(YAML::Node const& node) { return QuotedAs<T>::eval(node); }
 
 template<typename T> Teuchos::Array<T> getYamlArray(const YAML::Node& node)
 {
@@ -234,80 +204,6 @@ void convertXmlToYaml(std::istream& xmlStream, std::ostream& yamlStream)
   Teuchos::RCP<Teuchos::ParameterList> toConvert = Teuchos::getParametersFromXmlString(xmlString);
   //replace the file extension ".xml" with ".yaml", or append it if there was no extension
   YAMLParameterList::writeYamlStream(yamlStream, *toConvert);
-}
-
-bool haveSameValuesUnordered(const Teuchos::ParameterList& lhs, const Teuchos::ParameterList& rhs, bool verbose)
-{
-  typedef Teuchos::ParameterList::ConstIterator Iter;
-  Iter i = lhs.begin();
-  Iter j = rhs.begin();
-  if(lhs.name() != rhs.name())
-  {
-    if(verbose)
-    {
-      std::cout << "Parameter list names: \"" << lhs.name() << "\" and \"" << rhs.name() << "\".\n";
-    }
-    return false;
-  }
-  for(; i != lhs.end(); i++)
-  {
-    const std::string& key = lhs.name(i);
-    const Teuchos::ParameterEntry& val1 = lhs.entry(i);
-    //check that rhs also contains this key
-    if(!rhs.isParameter(key))
-    {
-      if(verbose)
-      {
-        std::cout << "One list is missing parameter: \"" << key << "\"\n";
-      }
-      return false;
-    }
-    const Teuchos::ParameterEntry& val2 = rhs.getEntry(key);
-    const Teuchos::any& any1 = val1.getAny(false);
-    const Teuchos::any& any2 = val2.getAny(false);
-    //check that types match
-    if(any1.type() != any2.type())
-    {
-      if(verbose)
-      {
-        std::cout << "Values for key \"" << key << "\" have different types: \"" <<
-          any1.typeName() << "\" vs \"" << any2.typeName() << "\"\n";
-      }
-      return false;
-    }
-    //check for parameter list special case (don't use operator==)
-    if(any1.type() == typeid(Teuchos::ParameterList))
-    {
-      if(!haveSameValuesUnordered(Teuchos::any_cast<Teuchos::ParameterList>(any1), Teuchos::any_cast<Teuchos::ParameterList>(any2), verbose))
-      {
-        //Don't need to print message here, the deepest list not matching will do that
-        return false;
-      }
-    }
-    else
-    {
-      //otherwise, use == to compare the values
-      if(!(val1 == val2))
-      {
-        if(verbose)
-        {
-          std::cout << "Values for key \"" << key << "\" are different.\n";
-        }
-        return false;
-      }
-    }
-    j++;
-  }
-  //lists must have same # of entries
-  if(j != rhs.end())
-  {
-    if(verbose)
-    {
-      std::cout << "Lists \"" << lhs.name() << "\" and \"" << rhs.name() << "\" have different number of parameters.\n";
-    }
-    return false;
-  }
-  return true;
 }
 
 namespace YAMLParameterList

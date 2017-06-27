@@ -73,7 +73,7 @@ namespace TeuchosTests
       string yamlFile = matchStems[i] + ".yaml";
       RCP<ParameterList> xmlList = Teuchos::getParametersFromXmlFile(xmlFile);
       RCP<ParameterList> yamlList = Teuchos::getParametersFromYamlFile(yamlFile);
-      TEST_EQUALITY(Teuchos::haveSameValuesUnordered(*xmlList, *yamlList), true);
+      TEST_EQUALITY(Teuchos::haveSameValues(*xmlList, *yamlList), true);
     }
   }
   TEUCHOS_UNIT_TEST(YAML, IntVsDouble)
@@ -82,7 +82,7 @@ namespace TeuchosTests
     //YAML reader should recognize the double and the param lists should not be equivalent
     RCP<ParameterList> xmlList = Teuchos::getParametersFromXmlFile("IntVsDouble.xml");
     RCP<ParameterList> yamlList = Teuchos::getParametersFromYamlFile("IntVsDouble.yaml");
-    TEST_EQUALITY(Teuchos::haveSameValuesUnordered(*xmlList, *yamlList), false);
+    TEST_EQUALITY(Teuchos::haveSameValues(*xmlList, *yamlList), false);
   }
   TEUCHOS_UNIT_TEST(YAML, IllegalKeyString)
   {
@@ -167,14 +167,7 @@ namespace TeuchosTests
     std::stringstream yamlOutStream2;
     Teuchos::YAMLParameterList::writeYamlStream(yamlOutStream2, *yamlParams);
     std::string yamlString2 = yamlOutStream2.str();
-  /* There are issues with older versions of yaml-cpp not maintaining the order
-     of parameters in a list. see Trilinos issue #1268.
-     that is why we use the Unordered comparison instead of the pure text one. */
-  //TEST_EQUALITY(yamlString2, expectedYamlString);
-    std::stringstream yamlInStream2(yamlString2);
-    RCP<ParameterList> yamlParams2;
-    yamlParams2 = Teuchos::YAMLParameterList::parseYamlStream(yamlInStream2);
-    TEST_EQUALITY(Teuchos::haveSameValuesUnordered(*yamlParams, *yamlParams2), true);
+    TEST_EQUALITY(yamlString2, expectedYamlString);
   }
 } //namespace TeuchosTests
 

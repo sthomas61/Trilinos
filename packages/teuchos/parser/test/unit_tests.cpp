@@ -236,13 +236,13 @@ TEUCHOS_UNIT_TEST( Parser, xml_reader ) {
 }
 
 TEUCHOS_UNIT_TEST( Parser, yaml_language ) {
-  LanguagePtr lang = yaml::ask_language();
+  LanguagePtr lang = YAML::ask_language();
   GrammarPtr grammar = make_grammar(*lang);
   make_lalr1_parser(grammar);
 }
 
 void test_yaml_reader(std::string const& str) {
-  Reader reader(yaml::ask_reader_tables());
+  Reader reader(YAML::ask_reader_tables());
   any result;
   reader.read_string(result, str, "test_yaml_reader");
 }

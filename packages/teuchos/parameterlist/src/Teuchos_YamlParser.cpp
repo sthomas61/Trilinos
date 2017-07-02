@@ -36,16 +36,12 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // Questions? Contact
-//                    Jonathan Hu       (jhu@sandia.gov)
-//                    Andrey Prokopenko (aprokop@sandia.gov)
-//                    Ray Tuminaro      (rstumin@sandia.gov)
+//                    Daniel Ibanez     (daibane@sandia.gov)
+//                    Roscoe Bartlett   (rabartl@sandia.gov)
 //
 // ***********************************************************************
 //
 // @HEADER
-
-#ifndef TEUCHOS_YAMLPARSER_DEF_H_
-#define TEUCHOS_YAMLPARSER_DEF_H_
 
 #include <iostream>
 #include <iomanip>
@@ -59,11 +55,12 @@
 #include "Teuchos_YAML.hpp"
 #include "Teuchos_Array.hpp"
 #include "Teuchos_TwoDArray.hpp"
+#include "Teuchos_Reader.hpp"
 
 namespace Teuchos {
 
-using PLPair = std::pair<std::string, ParameterEntry>;
-using Scalar = std::pair<bool, std::string>;
+typedef std::pair<std::string, ParameterEntry> PLPair;
+typedef std::pair<bool, std::string> Scalar;
 
 bool operator==(PLPair const&, PLPair const&) { return false; }
 bool operator<<(std::ostream& os, PLPair const&) { return os; }
@@ -71,7 +68,7 @@ bool operator<<(std::ostream& os, PLPair const&) { return os; }
 bool operator==(Scalar const&, Scalar const&) { return false; }
 bool operator<<(std::ostream& os, Scalar const&) { return os; }
 
-namespace YamlParameterList {
+namespace YAMLParameterList {
 
 class Reader : public Teuchos::Reader {
  public:
@@ -184,6 +181,7 @@ class Reader : public Teuchos::Reader {
     }
   }
   void map_item(any& result_any, any& key_any, any& value_any) {
+    using std::swap;
     std::string& key = any_ref_cast<Scalar>(key_any).second;
     PLPair& result = make_any_ref<PLPair>(result_any);
     swap(result.first, key);
@@ -193,22 +191,22 @@ class Reader : public Teuchos::Reader {
       std::string& value_str = value_scalar.second;
       if (!value_quoted && is_parseable_as<int>(value_str)) {
         int value = parse_as<int>(value_str);
-        result.second = ParameterEntry<int>(value);
+        result.second = ParameterEntry(value);
       } else if (!value_quoted && is_parseable_as<double>(value_str)) {
         double value = parse_as<double>(value_str);
-        result.second = ParameterEntry<double>(value);
+        result.second = ParameterEntry(value);
       } else {
-        result.second = ParameterEntry<std::string>(value_str);
+        result.second = ParameterEntry(value_str);
       }
     } else if (value_any.type() == typeid(Array<int>)) {
       Array<int>& value = any_ref_cast<Array<int> >(value_any);
-      result.second = ParameterEntry<Array<int> >(value);
+      result.second = ParameterEntry(value);
     } else if (value_any.type() == typeid(Array<double>)) {
       Array<double>& value = any_ref_cast<Array<double> >(value_any);
-      result.second = ParameterEntry<Array<double> >(value);
+      result.second = ParameterEntry(value);
     } else if (value_any.type() == typeid(Array<std::string>)) {
       Array<std::string>& value = any_ref_cast<Array<std::string> >(value_any);
-      result.second = ParameterEntry<Array<std::string> >(value);
+      result.second = ParameterEntry(value);
     } else if (value_any.type() == typeid(ParameterList)) {
       ParameterList& value = any_ref_cast<ParameterList>(value_any);
       ParameterList& result_pl = result.second.setList();
@@ -219,6 +217,7 @@ class Reader : public Teuchos::Reader {
   }
   template <typename T>
   void nested_array_to_2d_array_tmpl(any& out, any& in) {
+    using std::swap;
     Array<Array<T> >& inval = any_ref_cast<Array<Array<T> > >(in);
     TwoDArray<T>& outval = make_any_ref<TwoDArray<T> >(out);
     for (Teuchos_Ordinal i = 0; i < inval.size(); ++i) {
@@ -227,8 +226,8 @@ class Reader : public Teuchos::Reader {
       }
     }
     outval = TwoDArray<T>(inval.size(), inval[0].size());
-    for (Teuchos_Ordinal i = 0; i < outval.numRows(); ++i) {
-      for (Teuchos_Ordinal j = 0; j < outval.numCols(); ++j) {
+    for (Teuchos_Ordinal i = 0; i < outval.getNumRows(); ++i) {
+      for (Teuchos_Ordinal j = 0; j < outval.getNumCols(); ++j) {
         swap(outval(i, j), inval[i][j]);
       }
     }
@@ -279,17 +278,17 @@ class Reader : public Teuchos::Reader {
       }
     } else if (rhs.at(0).type() == typeid(Array<int>)) {
       Array<Array<int> >& a = make_any_ref<Array<Array<int> > >(result_any);
-      Array<int>& v = any_ref_cast<Any<int> >(rhs.at(0));
+      Array<int>& v = any_ref_cast<Array<int> >(rhs.at(0));
       a.push_back(Array<int>());
       swap(a.back(), v);
     } else if (rhs.at(0).type() == typeid(Array<double>)) {
       Array<Array<double> >& a = make_any_ref<Array<Array<double> > >(result_any);
-      Array<double>& v = any_ref_cast<Any<double> >(rhs.at(0));
+      Array<double>& v = any_ref_cast<Array<double> >(rhs.at(0));
       a.push_back(Array<double>());
       swap(a.back(), v);
     } else if (rhs.at(0).type() == typeid(Array<std::string>)) {
       Array<Array<std::string> >& a = make_any_ref<Array<Array<std::string> > >(result_any);
-      Array<std::string>& v = any_ref_cast<Any<std::string> >(rhs.at(0));
+      Array<std::string>& v = any_ref_cast<Array<std::string> >(rhs.at(0));
       a.push_back(Array<std::string>());
       swap(a.back(), v);
     } else {
@@ -319,23 +318,23 @@ class Reader : public Teuchos::Reader {
       swap(a.back(), v);
     } else if (result_any.type() == typeid(Array<Array<int> >)) {
       Array<Array<int> >& a = any_ref_cast<Array<Array<int> > >(result_any);
-      Array<int>& v = any_ref_cast<Any<int> >(rhs.at(2));
+      Array<int>& v = any_ref_cast<Array<int> >(rhs.at(2));
       a.push_back(Array<int>());
       swap(a.back(), v);
     } else if (result_any.type() == typeid(Array<Array<double> >)) {
       Array<Array<double> >& a = any_ref_cast<Array<Array<double> > >(result_any);
-      Array<double>& v = any_ref_cast<Any<double> >(rhs.at(2));
+      Array<double>& v = any_ref_cast<Array<double> >(rhs.at(2));
       a.push_back(Array<double>());
       swap(a.back(), v);
     } else if (result_any.type() == typeid(Array<Array<std::string> >)) {
       Array<Array<std::string> >& a =
         any_ref_cast<Array<Array<std::string> > >(result_any);
-      Array<std::string>& v = any_ref_cast<Any<std::string> >(rhs.at(2));
+      Array<std::string>& v = any_ref_cast<Array<std::string> >(rhs.at(2));
       a.push_back(Array<std::string>());
       swap(a.back(), v);
     } else {
       throw Teuchos::ParserFail(
-          "bug in YamlParameterList::Reader: unexpected sequence (array) type");
+          "bug in YAMLParameterList::Reader: unexpected sequence (array) type");
     }
   }
  private:
@@ -354,7 +353,7 @@ class Reader : public Teuchos::Reader {
   }
 };
 
-}} // namespace Teuchos::YamlParameterList
+}} // namespace Teuchos::YAMLParameterList
 
 namespace Teuchos {
 
@@ -437,8 +436,10 @@ void convertXmlToYaml(const std::string& xmlFileName, const std::string& yamlFil
 
 void convertXmlToYaml(std::istream& xmlStream, std::ostream& yamlStream)
 {
+  std::istreambuf_iterator<char> begin(xmlStream);
+  std::istreambuf_iterator<char> end;
   //read xmlStream into a string until EOF
-  std::string xmlString(std::istreambuf_iterator<char>(xmlStream), {});
+  std::string xmlString(begin, end);
   //load the parameter list from xml
   Teuchos::RCP<Teuchos::ParameterList> toConvert = Teuchos::getParametersFromXmlString(xmlString);
   //replace the file extension ".xml" with ".yaml", or append it if there was no extension
@@ -479,7 +480,7 @@ Teuchos::RCP<Teuchos::ParameterList> parseYamlStream(std::istream& yaml)
 {
   any result_any;
   YAMLParameterList::Reader reader;
-  reader.read_stream(yaml, "parseYamlStream");
+  reader.read_stream(result_any, yaml, "parseYamlStream");
   ParameterList& pl = any_ref_cast<ParameterList>(result_any);
   return rcp(new ParameterList(pl));
 }
@@ -487,7 +488,7 @@ Teuchos::RCP<Teuchos::ParameterList> parseYamlStream(std::istream& yaml)
 void writeYamlStream(std::ostream& yaml, const Teuchos::ParameterList& pl)
 {
   //warn the user if floats/doubles with integer values will be printed incorrectly
-  auto flags = yaml.flags();
+  std::ios_base::fmtflags flags = yaml.flags();
   //make temporary stringstream to test flags
   std::ostringstream testStream;
   testStream.flags(flags);
@@ -502,7 +503,7 @@ void writeYamlStream(std::ostream& yaml, const Teuchos::ParameterList& pl)
     //note: in YAML, "5." is a double but not an int
     std::cout << "Warning: yaml stream format flags would confuse double with integer value with int.\n";
     std::cout << "Setting std::ios::showpoint on the stream to fix this (will restore flags when done)\n";
-    auto flagsCopy = flags;
+    std::ios_base::fmtflags flagsCopy = flags;
     flagsCopy |= std::ios::showpoint;
     popFlags = true;
   }
@@ -526,7 +527,7 @@ void writeYamlStream(std::ostream& yaml, const Teuchos::ParameterList& pl)
 
 void writeYamlFile(const std::string& yamlFile, const Teuchos::ParameterList& pl)
 {
-  std::ofstream yaml(yamlFile);
+  std::ofstream yaml(yamlFile.c_str());
   /* set default floating-point style:
      1. 17 decimal places to ensure the value remains the same
      2. scientific: this prevents floating-point values that happen
@@ -747,5 +748,3 @@ bool stringNeedsQuotes(const std::string& s)
 } //namespace YAMLParameterList
 
 } //namespace Teuchos
-
-#endif

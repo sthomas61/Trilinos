@@ -13,7 +13,7 @@ SET_AND_INC_DIRS(DIR ${CMAKE_CURRENT_SOURCE_DIR})
 APPEND_GLOB(HEADERS ${DIR}/*.hpp)
 APPEND_GLOB(SOURCES ${DIR}/*.cpp)
 
-IF (NOT TeuchosCore_ENABLE_yaml-cpp)
+IF (NOT TeuchosParameterList_ENABLE_TeuchosParser)
 
   LIST(REMOVE_ITEM  HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/Teuchos_YamlParameterListCoreHelpers.hpp

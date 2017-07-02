@@ -5,7 +5,7 @@
 #include <Teuchos_ReaderTables.hpp>
 
 namespace Teuchos {
-namespace yaml {
+namespace YAML {
 
 enum {
   PROD_DOC,
@@ -83,7 +83,7 @@ Language make_language();
 LanguagePtr ask_language();
 ReaderTablesPtr ask_reader_tables();
 
-}  // end namespace yaml
+}  // end namespace YAML
 }  // end namespace Teuchos
 
 #endif

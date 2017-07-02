@@ -11,6 +11,6 @@ ADD_SUBDIRECTORIES(
   XML
   XMLParser
   )
-IF(TeuchosCore_ENABLE_yaml-cpp) 
+IF(TeuchosParameterList_ENABLE_TeuchosParser)
   ADD_SUBDIRECTORIES(yaml)
 ENDIF()

@@ -1,7 +1,7 @@
 #include "Teuchos_YAML.hpp"
 
 namespace Teuchos {
-namespace yaml {
+namespace YAML {
 
 Language make_language() {
   Language out;
@@ -85,10 +85,10 @@ LanguagePtr ask_language() {
 ReaderTablesPtr ask_reader_tables() {
   static ReaderTablesPtr ptr;
   if (ptr.strong_count() == 0) {
-    ptr = make_reader_tables(*(yaml::ask_language()));
+    ptr = make_reader_tables(*(YAML::ask_language()));
   }
   return ptr;
 }
 
-}  // end namespace yaml
+}  // end namespace YAML
 }  // end namespace Teuchos

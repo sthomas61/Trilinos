@@ -44,8 +44,8 @@
 //
 // @HEADER
 
-#ifndef TEUCHOS_YAMLPARSER_DECL_H_
-#define TEUCHOS_YAMLPARSER_DECL_H_
+#ifndef TEUCHOS_YAMLPARSER_DECL_HPP
+#define TEUCHOS_YAMLPARSER_DECL_HPP
 
 #include "Teuchos_ParameterList.hpp"
 #include "Teuchos_ParameterEntry.hpp"

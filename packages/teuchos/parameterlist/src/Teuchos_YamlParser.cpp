@@ -75,19 +75,19 @@ namespace YamlParameterList {
 
 class Reader : public Teuchos::Reader {
  public:
-  Reader():Teuchos::Reader(YAML::ask_reader_tables()) {
+  Reader():Teuchos::Reader(Teuchos::YAML::ask_reader_tables()) {
   }
   virtual ~Reader() {}
  protected:
   virtual void at_shift(any& result_any, int token, std::string& text) {
     using std::swap;
     switch (token) {
-      case YAML::TOK_RAW:
-      case YAML::TOK_SQUOTED:
-      case YAML::TOK_DQUOTED: {
+      case Teuchos::YAML::TOK_RAW:
+      case Teuchos::YAML::TOK_SQUOTED:
+      case Teuchos::YAML::TOK_DQUOTED: {
         Scalar& result = make_any_ref<Scalar>(result_any);
         swap(result.second, text);
-        bool is_quoted = (token != YAML::TOK_RAW);
+        bool is_quoted = (token != Teuchos::YAML::TOK_RAW);
         result.first = is_quoted;
         break;
       }
@@ -96,83 +96,89 @@ class Reader : public Teuchos::Reader {
   virtual void at_reduce(any& result_any, int prod, std::vector<any>& rhs) {
     using std::swap;
     switch (prod) {
-      case YAML::PROD_DOC: {
+      case Teuchos::YAML::PROD_DOC: {
         swap(result_any, rhs.at(2));
         break;
       }
-      case YAML::PROD_TOP_BMAP:
-      case YAML::PROD_TOP_BSEQ:
-      case YAML::PROD_BMAP: {
+      case Teuchos::YAML::PROD_TOP_BMAP:
+      case Teuchos::YAML::PROD_TOP_BSEQ:
+      case Teuchos::YAML::PROD_BMAP: {
         swap(result_any, rhs.at(1));
         break;
       }
-      case YAML::PROD_BSEQ: {
+      case Teuchos::YAML::PROD_BSEQ: {
         nested_array_to_2d_array(result_any, rhs.at(1));
         break;
       }
-      case YAML::PROD_TOP_BLOCK: {
+      case Teuchos::YAML::PROD_TOP_BLOCK: {
         swap(result_any, rhs.at(0));
         break;
       }
-      case YAML::PROD_BMAP_FIRST_ITEM:
-      case YAML::PROD_FMAP_FIRST_ITEM: {
+      case Teuchos::YAML::PROD_BMAP_FIRST_ITEM:
+      case Teuchos::YAML::PROD_FMAP_FIRST_ITEM: {
         map_first_item(result_any, rhs);
         break;
       }
-      case YAML::PROD_BMAP_NEXT_ITEM:
-      case YAML::PROD_FMAP_NEXT_ITEM: {
+      case Teuchos::YAML::PROD_BMAP_NEXT_ITEM:
+      case Teuchos::YAML::PROD_FMAP_NEXT_ITEM: {
         map_next_item(result_any, rhs);
         break;
       }
-      case YAML::PROD_BSEQ_FIRST_ITEM:
-      case YAML::PROD_FSEQ_FIRST_ITEM: {
+      case Teuchos::YAML::PROD_BSEQ_FIRST_ITEM:
+      case Teuchos::YAML::PROD_FSEQ_FIRST_ITEM: {
         seq_first_item(result_any, rhs);
         break;
       }
-      case YAML::PROD_BSEQ_NEXT_ITEM:
-      case YAML::PROD_FSEQ_NEXT_ITEM: {
+      case Teuchos::YAML::PROD_BSEQ_NEXT_ITEM:
+      case Teuchos::YAML::PROD_FSEQ_NEXT_ITEM: {
         seq_next_item(result_any, rhs);
         break;
       }
-      case YAML::PROD_BSEQ_SCALAR: {
+      case Teuchos::YAML::PROD_BSEQ_SCALAR: {
         swap(result_any, rhs.at(2));
         break;
       }
-      case YAML::PROD_BMAP_ITEM: {
+      case Teuchos::YAML::PROD_BMAP_ITEM: {
         map_item(result_any, rhs.at(1), rhs.at(5));
         break;
       }
-      case YAML::PROD_BMAP_SCALAR:
-      case YAML::PROD_BMAP_BLOCK:
-      case YAML::PROD_BMAP_FLOW: {
+      case Teuchos::YAML::PROD_BMAP_SCALAR:
+      case Teuchos::YAML::PROD_BMAP_BLOCK:
+      case Teuchos::YAML::PROD_BMAP_FLOW: {
         swap(result_any, rhs.at(0));
         break;
       }
-      case YAML::PROD_FSEQ_EMPTY: {
+      case Teuchos::YAML::PROD_FSEQ_EMPTY: {
         throw ParserFail("Empty arrays (sequences) not allowed!"
             "\n(need to be able to deduce the member type)\n");
       }
-      case YAML::PROD_FMAP_EMPTY: {
+      case Teuchos::YAML::PROD_FMAP_EMPTY: {
         make_any_ref<ParameterList>(result_any);
         break;
       }
-      case YAML::PROD_FSEQ: {
+      case Teuchos::YAML::PROD_FSEQ: {
         nested_array_to_2d_array(result_any, rhs.at(2));
         break;
       }
-      case YAML::PROD_FMAP: {
+      case Teuchos::YAML::PROD_FMAP: {
         swap(result_any, rhs.at(2));
         break;
       }
-      case YAML::PROD_FSEQ_SCALAR:
-      case YAML::PROD_FSEQ_FLOW:
-      case YAML::PROD_FMAP_SCALAR:
-      case YAML::PROD_FMAP_FLOW: {
+      case Teuchos::YAML::PROD_FSEQ_SCALAR:
+      case Teuchos::YAML::PROD_FSEQ_FLOW:
+      case Teuchos::YAML::PROD_FMAP_SCALAR:
+      case Teuchos::YAML::PROD_FMAP_FLOW: {
         swap(result_any, rhs.at(0));
         break;
       }
-      case YAML::PROD_FMAP_ITEM: {
+      case Teuchos::YAML::PROD_FMAP_ITEM: {
         map_item(result_any, rhs.at(0), rhs.at(4));
+        break;
+      }
+      case Teuchos::YAML::PROD_RAW:
+      case Teuchos::YAML::PROD_DQUOTED:
+      case Teuchos::YAML::PROD_SQUOTED: {
+        swap(result_any, rhs.at(0));
         break;
       }
     }
@@ -350,51 +356,7 @@ class Reader : public Teuchos::Reader {
 
 }} // namespace Teuchos::YamlParameterList
 
-namespace Teuchos
-{
-
-template<typename T> Teuchos::Array<T> getYamlArray(const YAML::Node& node)
-{
-  Teuchos::Array<T> arr;
-  for(YAML::const_iterator it = node.begin(); it != node.end(); it++)
-  {
-    arr.push_back(quoted_as<T>(*it));
-  }
-  return arr;
-}
-
-void checkYamlTwoDArray(const YAML::Node& node, const std::string& key)
-{
-  for (YAML::const_iterator it = node.begin(); it != node.end(); ++it)
-  {
-    if (it->size() != node.begin()->size())
-    {
-      throw YamlSequenceError(std::string("TwoDArray \"") + key + "\" has irregular sizes");
-    }
-  }
-}
-
-template<typename T> Teuchos::TwoDArray<T> getYamlTwoDArray(const YAML::Node& node)
-{
-  Teuchos::TwoDArray<T> arr;
-  typename Teuchos::TwoDArray<T>::size_type i, j;
-  arr.resizeRows(node.size());
-  arr.resizeCols(node.begin()->size());
-  i = 0;
-  for (YAML::const_iterator rit = node.begin(); rit != node.end(); ++rit)
-  {
-    j = 0;
-    for (YAML::const_iterator cit = rit->begin(); cit != rit->end(); ++cit)
-    {
-      arr(i, j) = quoted_as<T>(*cit);
-      ++j;
-    }
-    ++i;
-  }
-  return arr;
-}
-
-/* Helper functions */
+namespace Teuchos {
 
 void updateParametersFromYamlFile(const std::string& yamlFileName,
                                   const Teuchos::Ptr<Teuchos::ParameterList>& paramList)
@@ -410,14 +372,8 @@ void updateParametersFromYamlCString(const char* const data,
                                      bool overwrite)
 {
   Teuchos::RCP<Teuchos::ParameterList> updated = YAMLParameterList::parseYamlText(data);
-  if(overwrite)
-  {
-    paramList->setParameters(*updated);
-  }
-  else
-  {
-    paramList->setParametersNotAlreadySet(*updated);
-  }
+  if (overwrite) paramList->setParameters(*updated);
+  else paramList->setParametersNotAlreadySet(*updated);
 }
 
 void updateParametersFromYamlString(const std::string& yamlData,
@@ -425,14 +381,8 @@ void updateParametersFromYamlString(const std::string& yamlData,
                                   bool overwrite)
 {
   Teuchos::RCP<Teuchos::ParameterList> updated = YAMLParameterList::parseYamlText(yamlData);
-  if(overwrite)
-  {
-    paramList->setParameters(*updated);
-  }
-  else
-  {
-    paramList->setParametersNotAlreadySet(*updated);
-  }
+  if (overwrite) paramList->setParameters(*updated);
+  else paramList->setParametersNotAlreadySet(*updated);
 }
 
 Teuchos::RCP<Teuchos::ParameterList> getParametersFromYamlFile(const std::string& yamlFileName)
@@ -468,12 +418,9 @@ std::string convertXmlToYaml(const std::string& xmlFileName)
   Teuchos::RCP<Teuchos::ParameterList> toConvert = Teuchos::getParametersFromXmlFile(xmlFileName);
   //replace the file extension ".xml" with ".yaml", or append it if there was no extension
   std::string yamlFileName;
-  if(xmlFileName.find(".xml") == std::string::npos)
-  {
+  if(xmlFileName.find(".xml") == std::string::npos) {
     yamlFileName = xmlFileName + ".yaml";
-  }
-  else
-  {
+  } else {
     yamlFileName = xmlFileName.substr(0, xmlFileName.length() - 4) + ".yaml";
   }
   YAMLParameterList::writeYamlFile(yamlFileName, *toConvert);
@@ -503,191 +450,38 @@ namespace YAMLParameterList
 
 Teuchos::RCP<Teuchos::ParameterList> parseYamlText(const std::string& text)
 {
-  Teuchos::ParameterList pl;
-  std::vector<YAML::Node> baseMap = YAML::LoadAll(text);
-  return readParams(baseMap);
+  any result_any;
+  YAMLParameterList::Reader reader;
+  reader.read_string(result_any, text, "parseYamlText(std::string)");
+  ParameterList& pl = any_ref_cast<ParameterList>(result_any);
+  return rcp(new ParameterList(pl));
 }
 
 Teuchos::RCP<Teuchos::ParameterList> parseYamlText(const char* text)
 {
-  Teuchos::ParameterList pl;
-  std::vector<YAML::Node> baseMap = YAML::LoadAll(text);
-  return readParams(baseMap);
+  any result_any;
+  YAMLParameterList::Reader reader;
+  reader.read_string(result_any, text, "parseYamlText(const char*)");
+  ParameterList& pl = any_ref_cast<ParameterList>(result_any);
+  return rcp(new ParameterList(pl));
 }
 
 Teuchos::RCP<Teuchos::ParameterList> parseYamlFile(const std::string& yamlFile)
 {
-  std::vector<YAML::Node> baseMap = YAML::LoadAllFromFile(yamlFile);
-  return readParams(baseMap);
+  any result_any;
+  YAMLParameterList::Reader reader;
+  reader.read_file(result_any, yamlFile);
+  ParameterList& pl = any_ref_cast<ParameterList>(result_any);
+  return rcp(new ParameterList(pl));
 }
 
 Teuchos::RCP<Teuchos::ParameterList> parseYamlStream(std::istream& yaml)
 {
-  std::vector<YAML::Node> baseMap = YAML::LoadAll(yaml);
-  return readParams(baseMap);
-}
-
-Teuchos::RCP<Teuchos::ParameterList> readParams(std::vector<YAML::Node>& lists)
-{
-  Teuchos::RCP<Teuchos::ParameterList> pl = rcp(new Teuchos::ParameterList); //pl is the root ParameterList to be returned
-  //If there is exactly one element in "lists", assume it is the anonymous top-level parameter list
-  //If there are more than one, place them all in the anonymous top-level list
-  for(size_t i = 0; i < lists.size(); i++)
-  {
-    processMapNode(lists[i], *pl, true);
-  }
-  return pl;
-}
-
-void processMapNode(const YAML::Node& node, Teuchos::ParameterList& parent, bool topLevel)
-{
-  if(node.Type() != YAML::NodeType::Map)
-  {
-    throw YamlStructureError("All top-level elements of the YAML file must be maps.");
-  }
-  if(topLevel)
-  {
-    parent.setName("ANONYMOUS");
-    processMapNode(node.begin()->second, parent);
-  }
-  else
-  {
-    for(YAML::const_iterator i = node.begin(); i != node.end(); i++)
-    {
-      //make sure the key type is a string
-      if(i->first.Type() != YAML::NodeType::Scalar)
-      {
-        throw YamlKeyError("Keys must be plain strings");
-      }
-      //if this conversion fails and throws for any reason (shouldn't), let the caller handle it
-      const std::string key = quoted_as<std::string>(i->first);
-      processKeyValueNode(key, i->second, parent, topLevel);
-    }
-  }
-}
-
-void processKeyValueNode(const std::string& key, const YAML::Node& node, Teuchos::ParameterList& parent, bool topLevel)
-{
-  //node (value) type can be a map (for nested param lists),
-  //a scalar (int, double, string), or a sequence of doubles (vector<double>)
-  if(node.Type() == YAML::NodeType::Scalar)
-  {
-    try
-    {
-      parent.set(key, quoted_as<int>(node));
-    }
-    catch(...)
-    {
-      try
-      {
-        parent.set(key, quoted_as<double>(node));
-      }
-      catch(...)
-      {
-        try
-        {
-          std::string rawString = quoted_as<std::string>(node);
-          if(rawString == "true")
-          {
-            parent.set<bool>(key, true);
-          }
-          else if(rawString == "false")
-          {
-            parent.set<bool>(key, false);
-          }
-          else
-          {
-            parent.set(key, rawString);
-          }
-        }
-        catch(...)
-        {
-          throw YamlScalarError("YAML scalars must be int, double, bool or string.");
-        }
-      }
-    }
-  }
-  else if(node.Type() == YAML::NodeType::Map)
-  {
-    if(topLevel)
-    {
-      processMapNode(node, parent);
-    }
-    else
-    {
-      Teuchos::ParameterList& sublist = parent.sublist(key);
-      processMapNode(node, sublist);
-    }
-  }
-  else if(node.Type() == YAML::NodeType::Sequence)
-  {
-    if (node.begin()->Type() == YAML::NodeType::Sequence) {
-      checkYamlTwoDArray(node, key);
-      YAML::Node const& first_value = *(node.begin()->begin());
-      try
-      {
-        quoted_as<int>(first_value);
-        parent.set(key, getYamlTwoDArray<int>(node));
-      }
-      catch(...)
-      {
-        try
-        {
-          quoted_as<double>(first_value);
-          parent.set(key, getYamlTwoDArray<double>(node));
-        }
-        catch(...)
-        {
-          try
-          {
-            quoted_as<std::string>(first_value);
-            parent.set(key, getYamlTwoDArray<std::string>(node));
-          }
-          catch(...)
-          {
-            throw YamlSequenceError(std::string("TwoDArray \"") + key + "\" must contain int, double, bool or string");
-          }
-        }
-      }
-    } else {
-      YAML::Node const& first_value = *(node.begin());
-      try
-      {
-        quoted_as<int>(first_value);
-        parent.set(key, getYamlArray<int>(node));
-      }
-      catch(...)
-      {
-        try
-        {
-          quoted_as<double>(first_value);
-          parent.set(key, getYamlArray<double>(node));
-        }
-        catch(...)
-        {
-          try
-          {
-            quoted_as<std::string>(first_value);
-            parent.set(key, getYamlArray<std::string>(node));
-          }
-          catch(...)
-          {
-            throw YamlSequenceError(std::string("Array \"") + key + "\" must contain int, double, bool or string");
-          }
-        }
-      }
-    }
-  }
-  else if(node.Type() == YAML::NodeType::Null)
-  {
-    //treat NULL as empty string (not an error)
-    parent.set(key, std::string());
-  }
-  else
-  {
-    //Undefined
-    throw YamlUndefinedNodeError("Value type in a key-value pair must be one of: int, double, string, array, sublist.");
-  }
+  any result_any;
+  YAMLParameterList::Reader reader;
+  reader.read_stream(yaml, "parseYamlStream");
+  ParameterList& pl = any_ref_cast<ParameterList>(result_any);
+  return rcp(new ParameterList(pl));
 }
 
 void writeYamlStream(std::ostream& yaml, const Teuchos::ParameterList& pl)

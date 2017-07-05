@@ -59,14 +59,80 @@
 
 namespace Teuchos {
 
-typedef std::pair<std::string, ParameterEntry> PLPair;
-typedef std::pair<bool, std::string> Scalar;
+struct PLPair {
+  std::string key;
+  ParameterEntry value;
+};
+
+template <typename T>
+bool is_parseable_as(std::string const& text) {
+  std::istringstream ss(text);
+  T value;
+  return (ss >> value);
+}
+
+template <typename T>
+T parse_as(std::string const& text) {
+  std::istringstream ss(text);
+  T value;
+  ss >> value;
+  return value;
+}
+
+struct Token {
+  enum {
+    STRING,
+    DOUBLE,
+    INT
+  };
+  int kind;
+  std::string text;
+  int get_type() const {
+    if (kind != Teuchos::YAML::TOK_RAW) return STRING;
+    if (is_parseable_as<int>(text)) return INT;
+    if (is_parseable_as<double>(text)) return DOUBLE;
+    return STRING;
+  }
+  std::string get_unescaped_text() const {
+    if (kind == Teuchos::YAML::TOK_SQUOTED) {
+      std::string result;
+      int state = 0;
+      for (std::size_t i = 1; i < text.size() - 1; ++i) {
+        if (text[i] == '\'') {
+          if (state == 0) state = 1;
+          else if (state == 1) {
+            result.push_back('\'');
+            state = 0;
+          }
+        } else if (state != 0) {
+          throw ParserFail("bug in singly quoted parsing: get_unescaped quote in scalar");
+        } else {
+          result.push_back(text[i]);
+        }
+      }
+      return result;
+    }
+    if (kind == Teuchos::YAML::TOK_DQUOTED) {
+      std::string result;
+      int state = 0;
+      for (std::size_t i = 1; i < text.size() - 1; ++i) {
+        if (text[i] == '\\' && state == 0) state = 1;
+        else {
+          result.push_back(text[i]);
+          if (state == 1) state = 0;
+        }
+      }
+      return result;
+    }
+    return text;
+  }
+};
 
 bool operator==(PLPair const&, PLPair const&) { return false; }
 bool operator<<(std::ostream& os, PLPair const&) { return os; }
 
-bool operator==(Scalar const&, Scalar const&) { return false; }
-bool operator<<(std::ostream& os, Scalar const&) { return os; }
+bool operator==(Token const&, Token const&) { return false; }
+bool operator<<(std::ostream& os, Token const&) { return os; }
 
 namespace YAMLParameterList {
 
@@ -82,10 +148,9 @@ class Reader : public Teuchos::Reader {
       case Teuchos::YAML::TOK_RAW:
       case Teuchos::YAML::TOK_SQUOTED:
       case Teuchos::YAML::TOK_DQUOTED: {
-        Scalar& result = make_any_ref<Scalar>(result_any);
-        swap(result.second, text);
-        bool is_quoted = (token != Teuchos::YAML::TOK_RAW);
-        result.first = is_quoted;
+        Token& result = make_any_ref<Token>(result_any);
+        result.kind = token;
+        swap(result.text, text);
         break;
       }
     }
@@ -104,7 +169,7 @@ class Reader : public Teuchos::Reader {
         break;
       }
       case Teuchos::YAML::PROD_BSEQ: {
-        nested_array_to_2d_array(result_any, rhs.at(1));
+        swap(result_any, rhs.at(1));
         break;
       }
       case Teuchos::YAML::PROD_TOP_BLOCK: {
@@ -154,7 +219,7 @@ class Reader : public Teuchos::Reader {
         break;
       }
       case Teuchos::YAML::PROD_FSEQ: {
-        nested_array_to_2d_array(result_any, rhs.at(2));
+        swap(result_any, rhs.at(2));
         break;
       }
       case Teuchos::YAML::PROD_FMAP: {
@@ -180,116 +245,140 @@ class Reader : public Teuchos::Reader {
       }
     }
   }
+  void resolve_array(any& array_any) {
+    int min_type = Token::INT;
+    if (array_any.type() == typeid(Array<Token>)) {
+      Array<Token>& tokens = any_ref_cast<Array<Token> >(array_any);
+      if (tokens.size() == 0) {
+        throw ParserFail("arrays can't be empty\n"
+                         "(need to determine their element type)\n");
+      }
+      for (Teuchos_Ordinal i = 0; i < tokens.size(); ++i) {
+        min_type = std::min(min_type, tokens[i].get_type());
+      }
+      if (min_type == Token::INT) {
+        Array<int> result(tokens.size());
+        for (Teuchos_Ordinal i = 0; i < tokens.size(); ++i) {
+          result[i] = parse_as<int>(tokens[i].text);
+        }
+        array_any = result;
+      } else if (min_type == Token::DOUBLE) {
+        Array<double> result(tokens.size());
+        for (Teuchos_Ordinal i = 0; i < tokens.size(); ++i) {
+          result[i] = parse_as<double>(tokens[i].text);
+        }
+        array_any = result;
+      } else if (min_type == Token::STRING) {
+        Array<std::string> result(tokens.size());
+        for (Teuchos_Ordinal i = 0; i < tokens.size(); ++i) {
+          result[i] = tokens[i].get_unescaped_text();
+        }
+        array_any = result;
+      }
+    } else if (array_any.type() == typeid(Array<Array<Token> >)) {
+      Array<Array<Token> >& tokens = any_ref_cast<Array<Array<Token> > >(array_any);
+      for (Teuchos_Ordinal i = 0; i < tokens.size(); ++i) {
+        if (tokens[i].size() != tokens[0].size()) {
+          throw ParserFail("2D array: sub-arrays are different sizes");
+        }
+        for (Teuchos_Ordinal j = 0; j < tokens.size(); ++j) {
+          min_type = std::min(min_type, tokens[i][j].get_type());
+        }
+      }
+      if (min_type == Token::INT) {
+        TwoDArray<int> result(tokens.size(), tokens[0].size());
+        for (Teuchos_Ordinal i = 0; i < tokens.size(); ++i) {
+          for (Teuchos_Ordinal j = 0; j < tokens[0].size(); ++j) {
+            result(i, j) = parse_as<int>(tokens[i][j].text);
+          }
+        }
+        array_any = result;
+      } else if (min_type == Token::DOUBLE) {
+        TwoDArray<double> result(tokens.size(), tokens[0].size());
+        for (Teuchos_Ordinal i = 0; i < tokens.size(); ++i) {
+          for (Teuchos_Ordinal j = 0; j < tokens[0].size(); ++j) {
+            result(i, j) = parse_as<double>(tokens[i][j].text);
+          }
+        }
+        array_any = result;
+      } else if (min_type == Token::STRING) {
+        TwoDArray<std::string> result(tokens.size(), tokens[0].size());
+        for (Teuchos_Ordinal i = 0; i < tokens.size(); ++i) {
+          for (Teuchos_Ordinal j = 0; j < tokens[0].size(); ++j) {
+            result(i, j) = tokens[i][j].get_unescaped_text();
+          }
+        }
+        array_any = result;
+      }
+    }
+  }
   void map_item(any& result_any, any& key_any, any& value_any) {
     using std::swap;
-    std::string& key = any_ref_cast<Scalar>(key_any).second;
+    std::string key = any_ref_cast<Token>(key_any).get_unescaped_text();
     PLPair& result = make_any_ref<PLPair>(result_any);
-    swap(result.first, key);
-    if (value_any.type() == typeid(Scalar)) {
-      Scalar& value_scalar = any_ref_cast<Scalar>(value_any);
-      bool value_quoted = value_scalar.first;
-      std::string& value_str = value_scalar.second;
-      if (!value_quoted && is_parseable_as<int>(value_str)) {
-        int value = parse_as<int>(value_str);
-        result.second = ParameterEntry(value);
-      } else if (!value_quoted && is_parseable_as<double>(value_str)) {
-        double value = parse_as<double>(value_str);
-        result.second = ParameterEntry(value);
+    swap(result.key, key);
+    resolve_array(value_any);
+    if (value_any.type() == typeid(Token)) {
+      Token& value_token = any_ref_cast<Token>(value_any);
+      int value_type = value_token.get_type();
+      if (value_type == Token::INT) {
+        int value = parse_as<int>(value_token.text);
+        result.value = ParameterEntry(value);
+      } else if (value_type == Token::DOUBLE) {
+        double value = parse_as<double>(value_token.text);
+        result.value = ParameterEntry(value);
       } else {
-        result.second = ParameterEntry(value_str);
+        result.value = ParameterEntry(value_token.get_unescaped_text());
       }
     } else if (value_any.type() == typeid(Array<int>)) {
       Array<int>& value = any_ref_cast<Array<int> >(value_any);
-      result.second = ParameterEntry(value);
+      result.value = ParameterEntry(value);
     } else if (value_any.type() == typeid(Array<double>)) {
       Array<double>& value = any_ref_cast<Array<double> >(value_any);
-      result.second = ParameterEntry(value);
+      result.value = ParameterEntry(value);
     } else if (value_any.type() == typeid(Array<std::string>)) {
       Array<std::string>& value = any_ref_cast<Array<std::string> >(value_any);
-      result.second = ParameterEntry(value);
+      result.value = ParameterEntry(value);
+    } else if (value_any.type() == typeid(TwoDArray<int>)) {
+      TwoDArray<int>& value = any_ref_cast<TwoDArray<int> >(value_any);
+      result.value = ParameterEntry(value);
+    } else if (value_any.type() == typeid(TwoDArray<double>)) {
+      TwoDArray<double>& value = any_ref_cast<TwoDArray<double> >(value_any);
+      result.value = ParameterEntry(value);
+    } else if (value_any.type() == typeid(TwoDArray<std::string>)) {
+      TwoDArray<std::string>& value = any_ref_cast<TwoDArray<std::string> >(value_any);
+      result.value = ParameterEntry(value);
     } else if (value_any.type() == typeid(ParameterList)) {
       ParameterList& value = any_ref_cast<ParameterList>(value_any);
-      ParameterList& result_pl = result.second.setList();
+      ParameterList& result_pl = result.value.setList();
       swap(result_pl, value);
     } else {
       throw ParserFail("unexpected YAML map value type");
     }
   }
-  template <typename T>
-  void nested_array_to_2d_array_tmpl(any& out, any& in) {
-    using std::swap;
-    Array<Array<T> >& inval = any_ref_cast<Array<Array<T> > >(in);
-    TwoDArray<T>& outval = make_any_ref<TwoDArray<T> >(out);
-    for (Teuchos_Ordinal i = 0; i < inval.size(); ++i) {
-      if (inval[i].size() != inval[0].size()) {
-        throw ParserFail("2D array: sub-arrays are different sizes");
-      }
-    }
-    outval = TwoDArray<T>(inval.size(), inval[0].size());
-    for (Teuchos_Ordinal i = 0; i < outval.getNumRows(); ++i) {
-      for (Teuchos_Ordinal j = 0; j < outval.getNumCols(); ++j) {
-        swap(outval(i, j), inval[i][j]);
-      }
-    }
-  }
-  void nested_array_to_2d_array(any& result_any, any& rhs_any) {
-    using std::swap;
-    if (rhs_any.type() == typeid(Array<Array<int> >)) {
-      nested_array_to_2d_array_tmpl<int>(result_any, rhs_any);
-    } else if (rhs_any.type() == typeid(Array<Array<double> >)) {
-      nested_array_to_2d_array_tmpl<double>(result_any, rhs_any);
-    } else if (rhs_any.type() == typeid(Array<Array<std::string> >)) {
-      nested_array_to_2d_array_tmpl<std::string>(result_any, rhs_any);
-    } else {
-      swap(result_any, rhs_any);
-    }
-  }
   void map_first_item(any& result_any, std::vector<any>& rhs) {
     ParameterList& list = make_any_ref<ParameterList>(result_any);
     PLPair& pair = any_ref_cast<PLPair>(rhs.at(0));
-    list.set(pair.first, pair.second);
+    list.set(pair.key, pair.value);
   }
   void map_next_item(any& result_any, std::vector<any>& rhs) {
     using std::swap;
     swap(result_any, rhs.at(0));
     ParameterList& list = any_ref_cast<ParameterList>(result_any);
     PLPair& pair = any_ref_cast<PLPair>(rhs.at(2));
-    list.set(pair.first, pair.second);
+    list.set(pair.key, pair.value);
   }
   void seq_first_item(any& result_any, std::vector<any>& rhs) {
     using std::swap;
-    if (rhs.at(0).type() == typeid(Scalar)) {
-      Scalar& scalar = any_ref_cast<Scalar>(rhs.at(0));
-      bool scalar_quoted = scalar.first;
-      std::string& scalar_str = scalar.second;
-      if (!scalar_quoted && is_parseable_as<int>(scalar_str)) {
-        Array<int>& a = make_any_ref<Array<int> >(result_any);
-        int v = any_cast<int>(rhs.at(0));
-        a.push_back(v);
-      } else if (!scalar_quoted && is_parseable_as<double>(scalar_str)) {
-        Array<double>& a = make_any_ref<Array<double> >(result_any);
-        double v = any_cast<double>(rhs.at(0));
-        a.push_back(v);
-      } else {
-        Array<std::string>& a = make_any_ref<Array<std::string> >(result_any);
-        std::string& v = any_ref_cast<std::string>(rhs.at(0));
-        a.push_back(std::string());
-        swap(a.back(), v);
-      }
-    } else if (rhs.at(0).type() == typeid(Array<int>)) {
-      Array<Array<int> >& a = make_any_ref<Array<Array<int> > >(result_any);
-      Array<int>& v = any_ref_cast<Array<int> >(rhs.at(0));
-      a.push_back(Array<int>());
+    if (rhs.at(0).type() == typeid(Token)) {
+      Array<Token>& a = make_any_ref<Array<Token> >(result_any);
+      Token& v = any_ref_cast<Token>(rhs.at(0));
+      a.push_back(Token());
       swap(a.back(), v);
-    } else if (rhs.at(0).type() == typeid(Array<double>)) {
-      Array<Array<double> >& a = make_any_ref<Array<Array<double> > >(result_any);
-      Array<double>& v = any_ref_cast<Array<double> >(rhs.at(0));
-      a.push_back(Array<double>());
-      swap(a.back(), v);
-    } else if (rhs.at(0).type() == typeid(Array<std::string>)) {
-      Array<Array<std::string> >& a = make_any_ref<Array<Array<std::string> > >(result_any);
-      Array<std::string>& v = any_ref_cast<Array<std::string> >(rhs.at(0));
-      a.push_back(Array<std::string>());
+    } else if (rhs.at(0).type() == typeid(Array<Token>)) {
+      Array<Array<Token> >& a = make_any_ref<Array<Array<Token> > >(result_any);
+      Array<Token>& v = any_ref_cast<Array<Token> >(rhs.at(0));
+      a.push_back(Array<Token>());
       swap(a.back(), v);
     } else {
       throw Teuchos::ParserFail(
@@ -299,38 +388,15 @@ class Reader : public Teuchos::Reader {
   void seq_next_item(any& result_any, std::vector<any>& rhs) {
     using std::swap;
     swap(result_any, rhs.at(0));
-    if (result_any.type() == typeid(Array<int>)) {
-      Array<int>& a = any_ref_cast<Array<int> >(result_any);
-      Scalar& val = any_ref_cast<Scalar>(rhs.at(2));
-      if (val.first) throw ParserFail("string in integer array");
-      int v = parse_as<int>(val.second);
-      a.push_back(v);
-    } else if (result_any.type() == typeid(Array<double>)) {
-      Array<double>& a = any_ref_cast<Array<double> >(result_any);
-      Scalar& val = any_ref_cast<Scalar>(rhs.at(2));
-      if (val.first) throw ParserFail("string in integer array");
-      double v = parse_as<double>(val.second);
-      a.push_back(v);
-    } else if (result_any.type() == typeid(Array<std::string>)) {
-      Array<std::string>& a = any_ref_cast<Array<std::string> >(result_any);
-      std::string& v = any_ref_cast<Scalar>(rhs.at(2)).second;
-      a.push_back(std::string());
-      swap(a.back(), v);
-    } else if (result_any.type() == typeid(Array<Array<int> >)) {
-      Array<Array<int> >& a = any_ref_cast<Array<Array<int> > >(result_any);
-      Array<int>& v = any_ref_cast<Array<int> >(rhs.at(2));
-      a.push_back(Array<int>());
-      swap(a.back(), v);
-    } else if (result_any.type() == typeid(Array<Array<double> >)) {
-      Array<Array<double> >& a = any_ref_cast<Array<Array<double> > >(result_any);
-      Array<double>& v = any_ref_cast<Array<double> >(rhs.at(2));
-      a.push_back(Array<double>());
-      swap(a.back(), v);
-    } else if (result_any.type() == typeid(Array<Array<std::string> >)) {
-      Array<Array<std::string> >& a =
-        any_ref_cast<Array<Array<std::string> > >(result_any);
-      Array<std::string>& v = any_ref_cast<Array<std::string> >(rhs.at(2));
-      a.push_back(Array<std::string>());
+    if (result_any.type() == typeid(Array<Token>)) {
+      Array<Token>& a = any_ref_cast<Array<Token> >(result_any);
+      Token& val = any_ref_cast<Token>(rhs.at(2));
+      a.push_back(Token());
+      swap(a.back(), val);
+    } else if (result_any.type() == typeid(Array<Array<Token> >)) {
+      Array<Array<Token> >& a = any_ref_cast<Array<Array<Token> > >(result_any);
+      Array<Token>& v = any_ref_cast<Array<Token> >(rhs.at(2));
+      a.push_back(Array<Token>());
       swap(a.back(), v);
     } else {
       throw Teuchos::ParserFail(
@@ -338,19 +404,6 @@ class Reader : public Teuchos::Reader {
     }
   }
  private:
-  template <typename T>
-  bool is_parseable_as(std::string const& text) {
-    std::istringstream ss(text);
-    T value;
-    return (ss >> value);
-  }
-  template <typename T>
-  T parse_as(std::string const& text) {
-    std::istringstream ss(text);
-    T value;
-    ss >> value;
-    return value;
-  }
 };
 
 }} // namespace Teuchos::YAMLParameterList

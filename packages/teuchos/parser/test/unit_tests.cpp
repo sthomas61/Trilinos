@@ -272,6 +272,13 @@ TEUCHOS_UNIT_TEST( Parser, yaml_reader ) {
   test_yaml_reader(
       "---\n#top comment\ntop entry: \n  sub-entry: twelve\n"
       "  # long comment\n  # about sub-entry2\n  sub-entry2: green\n...\n");
+  test_yaml_reader(
+      "---\n"
+      "group name:\n"
+      "  first key: 1\n"
+      "  second key: 2\n"
+      "trailing name: 3\n"
+      "...\n");
 }
 
 TEUCHOS_UNIT_TEST( Parser, mathexpr_language ) {

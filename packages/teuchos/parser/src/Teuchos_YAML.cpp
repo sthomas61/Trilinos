@@ -22,14 +22,14 @@ Language make_language() {
   prods[PROD_BMAP]("block_collective") >> "INDENT", "block_map_items", "DEDENT";
   prods[PROD_BSEQ]("block_collective") >> "INDENT", "block_sequence_items", "DEDENT";
   prods[PROD_BMAP_FIRST_ITEM]("block_map_items") >> "block_map_item";
-  prods[PROD_BMAP_NEXT_ITEM]("block_map_items") >> "block_map_items", "EQDENT", "block_map_item";
+  prods[PROD_BMAP_NEXT_ITEM]("block_map_items") >> "block_map_items", "block_map_item";
   prods[PROD_BSEQ_FIRST_ITEM]("block_sequence_items") >> "block_sequence_item";
   prods[PROD_BSEQ_NEXT_ITEM]("block_sequence_items") >> "block_sequence_items", "EQDENT", "block_sequence_item";
   prods[PROD_BSEQ_SCALAR]("block_sequence_item") >> "comments", "BLOCK_SEQ", "scalar", "S?";
   prods[PROD_BMAP_ITEM]("block_map_item") >> "comments", "scalar", "S?", ":", "S?", "block_map_value";
-  prods[PROD_BMAP_SCALAR]("block_map_value") >> "scalar", "S?";
+  prods[PROD_BMAP_SCALAR]("block_map_value") >> "scalar", "S?", "EQDENT";
   prods[PROD_BMAP_BLOCK]("block_map_value") >> "block_collective";
-  prods[PROD_BMAP_FLOW]("block_map_value") >> "flow_collective";
+  prods[PROD_BMAP_FLOW]("block_map_value") >> "flow_collective", "EQDENT";
   prods[PROD_FSEQ_EMPTY]("flow_collective") >> "[", "S?", "]";
   prods[PROD_FMAP_EMPTY]("flow_collective") >> "{", "S?", "}";
   prods[PROD_FSEQ]("flow_collective") >> "[", "S?", "flow_sequence_items", "]";

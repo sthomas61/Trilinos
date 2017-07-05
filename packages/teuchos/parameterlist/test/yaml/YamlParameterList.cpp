@@ -55,6 +55,8 @@
 #include <Teuchos_Exceptions.hpp>
 #include <Teuchos_TwoDArray.hpp>
 #include <Teuchos_Parser.hpp>
+#include <Teuchos_YAML.hpp>
+#include <Teuchos_Reader.hpp>
 
 using Teuchos::ParameterList;
 using Teuchos::RCP;
@@ -70,6 +72,9 @@ namespace TeuchosTests
     matchStems.push_back("Match2");
     matchStems.push_back("Match3");
     matchStems.push_back("Match4");
+    Teuchos::DebugReader reader(Teuchos::YAML::ask_reader_tables(), std::cout);
+    Teuchos::any result;
+    reader.read_file(result, "Match1.yaml");
     for(size_t i = 0; i < matchStems.size(); i++)
     {
       string xmlFile =  matchStems[i] + ".xml";

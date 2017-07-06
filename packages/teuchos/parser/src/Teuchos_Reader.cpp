@@ -119,7 +119,10 @@ void Reader::at_token_indent() {
       indent_mismatch();
     }
     indent_stack.push_back(IndentStackEntry(line, indent_text.length(), lexer_indent.length()));
-    indent_text = lexer_indent;
+    lexer_text = "\n";
+    lexer_token = tables->indent_info.newline_token;
+    at_token();
+    lexer_text = indent_text = lexer_indent;
     lexer_token = tables->indent_info.indent_token;
     at_token();
   } else if (lexer_indent.length() < indent_text.length()) {
@@ -127,6 +130,7 @@ void Reader::at_token_indent() {
       indent_mismatch();
     }
     bool first = true;
+    lexer_text = lexer_indent;
     while (!indent_stack.empty()) {
       const IndentStackEntry& top = indent_stack.back();
       if (top.end_length <= minlen) break;
@@ -139,12 +143,15 @@ void Reader::at_token_indent() {
       }
     }
     if (first) lexer_text.clear();
+    lexer_text = "\n";
+    lexer_token = tables->indent_info.newline_token;
+    at_token();
     indent_text = lexer_indent;
   } else {
     if (0 != lexer_indent.compare(indent_text)) {
       indent_mismatch();
     }
-    lexer_token = tables->indent_info.eqdent_token;
+    lexer_token = tables->indent_info.newline_token;
     at_token();
   }
 }

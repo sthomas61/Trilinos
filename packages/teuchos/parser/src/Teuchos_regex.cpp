@@ -131,7 +131,7 @@ LanguagePtr ask_language() {
 void make_dfa(FiniteAutomaton& result, std::string const& name, std::string const& regex, int token) {
   using std::swap;
   /* special "regex"es for indentation sensitivity support */
-  if (regex == "]INDENT[" || regex == "]DEDENT[" || regex == "]EQDENT[" || regex == "]NODENT[") {
+  if (regex == "]INDENT[" || regex == "]DEDENT[" || regex == "]NEWLINE[" || regex == "]NODENT[") {
     make_dfa(result, name, "\r?\n[ \t]*", token);
     return;
   }

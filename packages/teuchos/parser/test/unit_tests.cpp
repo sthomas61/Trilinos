@@ -242,15 +242,15 @@ TEUCHOS_UNIT_TEST( Parser, yaml_language ) {
 }
 
 void test_yaml_reader(std::string const& str) {
-  Reader reader(YAML::ask_reader_tables());
+  DebugReader reader(YAML::ask_reader_tables(), std::cout);
   any result;
-  reader.read_string(result, str, "test_yaml_reader");
+  reader.read_string(result, str, str);
 }
 
 TEUCHOS_UNIT_TEST( Parser, yaml_reader ) {
-  test_yaml_reader("---\nfoo:bar\n...\n");
-  test_yaml_reader("%YAML 1.2\n---\nfoo:bar\n...\n");
-  test_yaml_reader("---\nfoo:bar\nfar:boo\n...\n");
+//test_yaml_reader("---\nfoo:bar\n...\n");
+//test_yaml_reader("%YAML 1.2\n---\nfoo:bar\n...\n");
+//test_yaml_reader("---\nfoo:bar\nfar:boo\n...\n");
   test_yaml_reader("---\nfoo:\n  bar:42\n  baz:  100\n...\n");
   test_yaml_reader("---\nfoo:\n  bar  :42\n  baz:  100\n...\n");
   test_yaml_reader("---\n foo:bar\n...\n");

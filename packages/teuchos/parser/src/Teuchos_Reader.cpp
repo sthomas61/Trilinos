@@ -114,14 +114,14 @@ void Reader::at_token_indent() {
   TEUCHOS_ASSERT(at(lexer_text, 0) == '\n');
   std::string lexer_indent = lexer_text.substr(1, std::string::npos);
   std::size_t minlen = std::min(lexer_indent.length(), indent_text.length());
+  lexer_text = "\n";
+  lexer_token = tables->indent_info.newline_token;
+  at_token();
   if (lexer_indent.length() > indent_text.length()) {
     if (0 != lexer_indent.compare(0, indent_text.length(), indent_text)) {
       indent_mismatch();
     }
     indent_stack.push_back(IndentStackEntry(line, indent_text.length(), lexer_indent.length()));
-    lexer_text = "\n";
-    lexer_token = tables->indent_info.newline_token;
-    at_token();
     lexer_text = indent_text = lexer_indent;
     lexer_token = tables->indent_info.indent_token;
     at_token();
@@ -135,24 +135,17 @@ void Reader::at_token_indent() {
       const IndentStackEntry& top = indent_stack.back();
       if (top.end_length <= minlen) break;
       indent_stack.pop_back();
+      if (first) { lexer_text = lexer_indent; first = false; }
+      else lexer_text = "";
       lexer_token = tables->indent_info.dedent_token;
       at_token();
-      if (first) {
-        lexer_text.clear();
-        first = false;
-      }
     }
-    if (first) lexer_text.clear();
-    lexer_text = "\n";
-    lexer_token = tables->indent_info.newline_token;
-    at_token();
+    lexer_text.clear();
     indent_text = lexer_indent;
   } else {
     if (0 != lexer_indent.compare(indent_text)) {
       indent_mismatch();
     }
-    lexer_token = tables->indent_info.newline_token;
-    at_token();
   }
 }
 
@@ -234,7 +227,7 @@ void Reader::read_stream(any& result, std::istream& stream, std::string const& s
     indent_text.clear();
     indent_stack.clear();
     /* pretend the stream starts with a newline so we can
-       detect an INDENT on the first line. don't update the
+       detect a NEWLINE pattern on the first line. don't update the
        line/column pointers though. */
     char c = '\n';
     lexer_text.push_back(c);

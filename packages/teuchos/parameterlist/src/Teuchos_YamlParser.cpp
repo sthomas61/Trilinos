@@ -159,34 +159,40 @@ class Reader : public Teuchos::Reader {
     using std::swap;
     switch (prod) {
       case Teuchos::YAML::PROD_DOC: {
-        swap(result_any, rhs.at(2));
+        swap(result_any, rhs.at(1));
+        TEUCHOS_ASSERT(result_any.type() == typeid(ParameterList));
         break;
       }
       case Teuchos::YAML::PROD_TOP_BMAP:
       case Teuchos::YAML::PROD_TOP_BSEQ:
+      case Teuchos::YAML::PROD_TOP_BLOCK: {
+        swap(result_any, rhs.at(0));
+        break;
+      }
       case Teuchos::YAML::PROD_BMAP: {
         swap(result_any, rhs.at(1));
+        TEUCHOS_ASSERT(result_any.type() == typeid(ParameterList));
         break;
       }
       case Teuchos::YAML::PROD_BSEQ: {
         swap(result_any, rhs.at(1));
         break;
       }
-      case Teuchos::YAML::PROD_TOP_BLOCK: {
-        swap(result_any, rhs.at(0));
-        break;
-      }
       case Teuchos::YAML::PROD_BMAP_FIRST_ITEM:
       case Teuchos::YAML::PROD_FMAP_FIRST_ITEM: {
         map_first_item(result_any, rhs);
+        TEUCHOS_ASSERT(result_any.type() == typeid(ParameterList));
         break;
       }
       case Teuchos::YAML::PROD_BMAP_NEXT_ITEM: {
+        TEUCHOS_ASSERT(rhs.size() == 2);
         map_next_item(result_any, rhs.at(0), rhs.at(1));
+        TEUCHOS_ASSERT(result_any.type() == typeid(ParameterList));
         break;
       }
       case Teuchos::YAML::PROD_FMAP_NEXT_ITEM: {
         map_next_item(result_any, rhs.at(0), rhs.at(3));
+        TEUCHOS_ASSERT(result_any.type() == typeid(ParameterList));
         break;
       }
       case Teuchos::YAML::PROD_BSEQ_FIRST_ITEM:
@@ -194,9 +200,12 @@ class Reader : public Teuchos::Reader {
         seq_first_item(result_any, rhs);
         break;
       }
-      case Teuchos::YAML::PROD_BSEQ_NEXT_ITEM:
+      case Teuchos::YAML::PROD_BSEQ_NEXT_ITEM: {
+        seq_next_item(result_any, rhs.at(0), rhs.at(1));
+        break;
+      }
       case Teuchos::YAML::PROD_FSEQ_NEXT_ITEM: {
-        seq_next_item(result_any, rhs);
+        seq_next_item(result_any, rhs.at(0), rhs.at(3));
         break;
       }
       case Teuchos::YAML::PROD_BSEQ_SCALAR: {
@@ -208,8 +217,16 @@ class Reader : public Teuchos::Reader {
         map_item(result_any, rhs.at(1), rhs.at(5));
         break;
       }
-      case Teuchos::YAML::PROD_BMAP_SCALAR:
-      case Teuchos::YAML::PROD_BMAP_BLOCK:
+      case Teuchos::YAML::PROD_BMAP_SCALAR: {
+        swap(result_any, rhs.at(0));
+        break;
+      }
+      case Teuchos::YAML::PROD_BMAP_BLOCK: {
+        TEUCHOS_ASSERT(rhs.size() == 2);
+        swap(result_any, rhs.at(1));
+        TEUCHOS_ASSERT(result_any.type() == typeid(ParameterList));
+        break;
+      }
       case Teuchos::YAML::PROD_BMAP_FLOW: {
         swap(result_any, rhs.at(0));
         break;
@@ -359,7 +376,12 @@ class Reader : public Teuchos::Reader {
       ParameterList& result_pl = result.value.setList();
       swap(result_pl, value);
     } else {
-      throw ParserFail("unexpected YAML map value type");
+      std::string msg = "unexpected YAML map value type ";
+      msg += value_any.type().name();
+      msg += " for key \"";
+      msg += result.key;
+      msg += "\"\n";
+      throw ParserFail(msg);
     }
   }
   void map_first_item(any& result_any, std::vector<any>& rhs) {
@@ -391,17 +413,17 @@ class Reader : public Teuchos::Reader {
           "unexpected sequence item type");
     }
   }
-  void seq_next_item(any& result_any, std::vector<any>& rhs) {
+  void seq_next_item(any& result_any, any& items, any& next_item) {
     using std::swap;
-    swap(result_any, rhs.at(0));
+    swap(result_any, items);
     if (result_any.type() == typeid(Array<Token>)) {
       Array<Token>& a = any_ref_cast<Array<Token> >(result_any);
-      Token& val = any_ref_cast<Token>(rhs.at(2));
+      Token& val = any_ref_cast<Token>(next_item);
       a.push_back(Token());
       swap(a.back(), val);
     } else if (result_any.type() == typeid(Array<Array<Token> >)) {
       Array<Array<Token> >& a = any_ref_cast<Array<Array<Token> > >(result_any);
-      Array<Token>& v = any_ref_cast<Array<Token> >(rhs.at(2));
+      Array<Token>& v = any_ref_cast<Array<Token> >(next_item);
       a.push_back(Array<Token>());
       swap(a.back(), v);
     } else {

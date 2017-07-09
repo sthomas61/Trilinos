@@ -74,10 +74,11 @@ namespace TeuchosTests
     matchStems.push_back("Match4");
     for(size_t i = 0; i < matchStems.size(); i++)
     {
-      string xmlFile =  matchStems[i] + ".xml";
       string yamlFile = matchStems[i] + ".yaml";
-      RCP<ParameterList> xmlList = Teuchos::getParametersFromXmlFile(xmlFile);
       RCP<ParameterList> yamlList = Teuchos::getParametersFromYamlFile(yamlFile);
+      std::cerr << "done reading \"" << yamlFile << "\"\n";
+      string xmlFile =  matchStems[i] + ".xml";
+      RCP<ParameterList> xmlList = Teuchos::getParametersFromXmlFile(xmlFile);
       TEST_EQUALITY(Teuchos::haveSameValues(*xmlList, *yamlList), true);
     }
   }

@@ -181,9 +181,12 @@ class Reader : public Teuchos::Reader {
         map_first_item(result_any, rhs);
         break;
       }
-      case Teuchos::YAML::PROD_BMAP_NEXT_ITEM:
+      case Teuchos::YAML::PROD_BMAP_NEXT_ITEM: {
+        map_next_item(result_any, rhs.at(0), rhs.at(1));
+        break;
+      }
       case Teuchos::YAML::PROD_FMAP_NEXT_ITEM: {
-        map_next_item(result_any, rhs);
+        map_next_item(result_any, rhs.at(0), rhs.at(3));
         break;
       }
       case Teuchos::YAML::PROD_BSEQ_FIRST_ITEM:
@@ -197,6 +200,7 @@ class Reader : public Teuchos::Reader {
         break;
       }
       case Teuchos::YAML::PROD_BSEQ_SCALAR: {
+        TEUCHOS_ASSERT(rhs.size() == 5);
         swap(result_any, rhs.at(2));
         break;
       }
@@ -219,10 +223,12 @@ class Reader : public Teuchos::Reader {
         break;
       }
       case Teuchos::YAML::PROD_FSEQ: {
+        TEUCHOS_ASSERT(rhs.size() == 4);
         swap(result_any, rhs.at(2));
         break;
       }
       case Teuchos::YAML::PROD_FMAP: {
+        TEUCHOS_ASSERT(rhs.size() == 4);
         swap(result_any, rhs.at(2));
         break;
       }
@@ -361,11 +367,11 @@ class Reader : public Teuchos::Reader {
     PLPair& pair = any_ref_cast<PLPair>(rhs.at(0));
     list.set(pair.key, pair.value);
   }
-  void map_next_item(any& result_any, std::vector<any>& rhs) {
+  void map_next_item(any& result_any, any& items, any& next_item) {
     using std::swap;
-    swap(result_any, rhs.at(0));
+    swap(result_any, items);
     ParameterList& list = any_ref_cast<ParameterList>(result_any);
-    PLPair& pair = any_ref_cast<PLPair>(rhs.at(2));
+    PLPair& pair = any_ref_cast<PLPair>(next_item);
     list.set(pair.key, pair.value);
   }
   void seq_first_item(any& result_any, std::vector<any>& rhs) {

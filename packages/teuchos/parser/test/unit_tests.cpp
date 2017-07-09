@@ -242,7 +242,7 @@ TEUCHOS_UNIT_TEST( Parser, yaml_language ) {
 }
 
 void test_yaml_reader(std::string const& str) {
-  DebugReader reader(YAML::ask_reader_tables(), std::cout);
+  Reader reader(YAML::ask_reader_tables());
   any result;
   reader.read_string(result, str, str);
 }
@@ -278,6 +278,13 @@ TEUCHOS_UNIT_TEST( Parser, yaml_reader ) {
       "  first key: 1\n"
       "  second key: 2\n"
       "trailing name: 3\n"
+      "...\n");
+  test_yaml_reader(
+      "---\n"
+      "level 1: \n"
+      "  level 2: \n"
+      "    level 3: value\n"
+      "trailing name: foo\n"
       "...\n");
 }
 

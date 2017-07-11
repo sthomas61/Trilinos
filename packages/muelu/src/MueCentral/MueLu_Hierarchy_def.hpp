@@ -485,6 +485,9 @@ namespace MueLu {
     Levels_       .resize(levelID);
     levelManagers_.resize(levelID);
 
+    // since the # of levels, etc. may have changed, force re-determination of description during next call to description()
+    ResetDescription();
+
     describe(GetOStream(Statistics0), GetVerbLevel());
   }
 
@@ -1115,10 +1118,14 @@ namespace MueLu {
 
   template <class Scalar, class LocalOrdinal, class GlobalOrdinal, class Node>
   std::string Hierarchy<Scalar, LocalOrdinal, GlobalOrdinal, Node>::description() const {
-    std::ostringstream out;
-    out << BaseClass::description();
-    out << "{#levels = " << GetGlobalNumLevels() << ", complexity = " << GetOperatorComplexity() << "}";
-    return out.str();
+    if ( description_.empty() )
+    {
+      std::ostringstream out;
+      out << BaseClass::description();
+      out << "{#levels = " << GetGlobalNumLevels() << ", complexity = " << GetOperatorComplexity() << "}";
+      description_ = out.str();
+    }
+    return description_;
   }
 
   template <class Scalar, class LocalOrdinal, class GlobalOrdinal, class Node>
@@ -1368,6 +1375,15 @@ namespace MueLu {
 
       Xpetra::global_size_t INVALID = Teuchos::OrdinalTraits<Xpetra::global_size_t>::invalid();
       nodeMap = MapFactory::Build(dofMap->lib(), INVALID, nodeGIDs(), indexBase, dofMap->getComm());
+    } else {
+      // blkSize == 1
+      // Check whether the length of vectors fits to the size of A
+      // If yes, make sure that the maps are matching
+      // If no, throw a warning but do not touch the Coordinates
+      if(coords->getLocalLength() != A->getRowMap()->getNodeNumElements()) {
+        GetOStream(Warnings) << "Coordinate vector does not match row map of matrix A!" << std::endl;
+        return;
+      }
     }
 
     Array<ArrayView<const double> >      coordDataView;
